@@ -22,8 +22,16 @@ class TastetradeClient:
         self.api_calls = []  # Track recent API calls
         self.MAX_API_CALLS_HISTORY = 50  # Maximum number of API calls to store in history
         
+# Update to authenticate() method in TastetradeClient class
     def authenticate(self):
         """Authenticate with the Tastytrade API."""
+        if not config.TASTYTRADE_LOGIN or not config.TASTYTRADE_PASSWORD:
+            error_msg = "Missing Tastytrade credentials. Running in limited mode."
+            self._track_api_call("Authentication", f"FAILED: {error_msg}")
+            logger.warning(error_msg)
+            self.authenticated = False
+            return False
+            
         try:
             logger.info(f"Authenticating with Tastytrade API using base URL: {config.API_BASE_URL}")
             self.tasty = Tastytrade(api_base_url=config.API_BASE_URL)
@@ -38,7 +46,8 @@ class TastetradeClient:
             error_msg = f"Authentication failed: {str(e)}"
             self._track_api_call("Authentication", f"FAILED: {error_msg}")
             logger.error(error_msg)
-            raise  # Re-raise to let the caller handle it
+            # Don't re-raise the exception, allow the app to continue in a limited mode
+            return False
     
     def ensure_authenticated(self):
         """Ensure the client is authenticated, re-authenticate if necessary."""
