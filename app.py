@@ -57,20 +57,23 @@ def create_app():
         logger.error(f"500 error: {str(e)}")
         return jsonify({"error": "Server Error", "message": "An internal server error occurred"}), 500
     
-    # Before request handler to ensure client is initialized
+    # Before request handler to ensure client is initialized - MODIFIED TO SKIP AUTHENTICATION
     @app.before_request
     def ensure_client():
         global client_initialized
         if not client_initialized:
             with client_init_lock:
                 if not client_initialized:
-                    logger.info("Initializing Tastytrade client")
-                    success = client.authenticate()
-                    if not success:
-                        logger.error("Failed to initialize Tastytrade client")
-                    else:
-                        logger.info("Tastytrade client initialized successfully")
-                    client_initialized = True
+                    logger.info("Initializing Tastytrade client in DEMO MODE")
+                    try:
+                        # Try to authenticate but don't require success
+                        client.authenticate()
+                    except Exception as e:
+                        logger.error(f"Authentication failed: {str(e)}")
+                    finally:
+                        # Mark as initialized regardless of authentication result
+                        client_initialized = True
+                        logger.info("Client initialized in demo mode - some features may be limited")
     
     return app
 
