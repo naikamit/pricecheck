@@ -16,7 +16,7 @@ FLASK_SECRET_KEY = os.environ.get('FLASK_SECRET_KEY', os.urandom(24).hex())
 DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 't')
 
 # Server configuration
-PORT = int(os.environ.get('PORT', 8000))
+PORT = int(os.environ.get('PORT', 8080))  # Change default from 8000 to 8080
 
 # Logging configuration
 LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
