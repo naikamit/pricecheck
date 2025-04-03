@@ -25,7 +25,7 @@ class TastetradeClient:
     def authenticate(self):
         """Authenticate with the Tastytrade API."""
         try:
-            logger.info("Authenticating with Tastytrade API")
+            logger.info(f"Authenticating with Tastytrade API using base URL: {config.API_BASE_URL}")
             self.tasty = Tastytrade(api_base_url=config.API_BASE_URL)
             self.tasty.login(config.TASTYTRADE_LOGIN, config.TASTYTRADE_PASSWORD)
             self.authenticated = True
@@ -35,9 +35,10 @@ class TastetradeClient:
             return True
         except Exception as e:
             self.authenticated = False
-            self._track_api_call("Authentication", f"FAILED: {str(e)}")
-            logger.error(f"Authentication failed: {str(e)}")
-            return False
+            error_msg = f"Authentication failed: {str(e)}"
+            self._track_api_call("Authentication", f"FAILED: {error_msg}")
+            logger.error(error_msg)
+            raise  # Re-raise to let the caller handle it
     
     def ensure_authenticated(self):
         """Ensure the client is authenticated, re-authenticate if necessary."""
@@ -53,7 +54,8 @@ class TastetradeClient:
     
     def get_account_balance(self):
         """Get the account balance."""
-        if not self.ensure_authenticated():
+        if not self.authenticated or not self.tasty:
+            logger.warning("Not authenticated, returning empty account balance")
             return None
         
         try:
@@ -88,7 +90,8 @@ class TastetradeClient:
     
     def get_mstu_price(self):
         """Get the current MSTU price."""
-        if not self.ensure_authenticated():
+        if not self.authenticated or not self.tasty:
+            logger.warning("Not authenticated, returning empty MSTU price")
             return None
         
         try:
@@ -162,8 +165,11 @@ class TastetradeClient:
         Returns:
             dict: Information about the order status
         """
-        if not self.ensure_authenticated():
-            return {"success": False, "message": "Authentication failed"}
+        if not self.authenticated or not self.tasty:
+            message = "Not authenticated, cannot place orders"
+            self._track_api_call("Buy MSTU", f"FAILED: {message}")
+            logger.error(message)
+            return {"success": False, "message": message}
         
         if order_type == 'Limit' and price is None:
             message = "Limit orders require a price"
@@ -245,18 +251,21 @@ class TastetradeClient:
     
     def _track_api_call(self, endpoint, status):
         """Track an API call in the history."""
-        eastern = pytz.timezone('US/Eastern')
-        timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S %Z")
-        
-        self.api_calls.insert(0, {
-            "endpoint": endpoint,
-            "status": status,
-            "timestamp": timestamp
-        })
-        
-        # Trim the history if it gets too long
-        if len(self.api_calls) > self.MAX_API_CALLS_HISTORY:
-            self.api_calls = self.api_calls[:self.MAX_API_CALLS_HISTORY]
+        try:
+            eastern = pytz.timezone('US/Eastern')
+            timestamp = datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S %Z")
+            
+            self.api_calls.insert(0, {
+                "endpoint": endpoint,
+                "status": status,
+                "timestamp": timestamp
+            })
+            
+            # Trim the history if it gets too long
+            if len(self.api_calls) > self.MAX_API_CALLS_HISTORY:
+                self.api_calls = self.api_calls[:self.MAX_API_CALLS_HISTORY]
+        except Exception as e:
+            logger.error(f"Error tracking API call: {str(e)}")
 
 # Create a singleton instance
 client = TastetradeClient()
