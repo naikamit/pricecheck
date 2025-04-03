@@ -18,10 +18,39 @@ def index():
     # Return the dashboard template
     return render_template('dashboard.html')
 
+# Update to get_data() function in dashboard.py
 @dashboard.route('/api/data')
 def get_data():
     """API endpoint to get the latest data for the dashboard."""
     logger.info("API request for dashboard data")
+    
+    # Check if the client is authenticated
+    if not client.authenticated:
+        logger.warning("Client not authenticated, returning demo data")
+        return jsonify({
+            "message": "Running in demo mode. Authentication failed or credentials not provided.",
+            "account": {
+                "cash_balance": format_currency(0),
+                "total_equity": format_currency(0),
+                "buying_power": format_currency(0),
+                "raw_cash_balance": 0,
+                "timestamp": None,
+                "formatted_timestamp": "Demo Mode"
+            },
+            "mstu": {
+                "symbol": "MSTU",
+                "description": "Microstrategy Inc (Demo)",
+                "last_price": format_currency(0),
+                "bid_price": format_currency(0),
+                "ask_price": format_currency(0),
+                "change": format_currency(0),
+                "percent_change": format_percentage(0),
+                "raw_last_price": 0,
+                "timestamp": None,
+                "formatted_timestamp": "Demo Mode"
+            },
+            "api_calls": client.get_api_calls_history()
+        })
     
     # Get account balance and MSTU price
     account_balance = client.get_account_balance()
