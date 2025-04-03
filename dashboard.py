@@ -1,4 +1,3 @@
-# /dashboard.py
 from flask import Blueprint, render_template, jsonify, request
 
 from tastytrade_client import client
@@ -22,6 +21,35 @@ def index():
 def get_data():
     """API endpoint to get the latest data for the dashboard."""
     logger.info("API request for dashboard data")
+    
+    # Check for authentication before attempting to get real data
+    if not client.authenticated:
+        logger.warning("Running in demo mode - returning placeholder data")
+        return jsonify({
+            'account': {
+                'cash_balance': '$0.00 (Demo)',
+                'total_equity': '$0.00 (Demo)',
+                'buying_power': '$0.00 (Demo)',
+                'raw_cash_balance': 0,
+                'timestamp': None,
+                'formatted_timestamp': 'Demo Mode'
+            },
+            'mstu': {
+                'symbol': 'MSTU',
+                'description': 'Microstrategy Inc',
+                'last_price': '$0.00 (Demo)',
+                'bid_price': '$0.00 (Demo)',
+                'ask_price': '$0.00 (Demo)',
+                'change': '$0.00',
+                'percent_change': '0.00%',
+                'raw_last_price': 0,
+                'timestamp': None,
+                'formatted_timestamp': 'Demo Mode'
+            },
+            'api_calls': client.get_api_calls_history(),
+            'demo_mode': True,
+            'message': 'Application running in demo mode. API connection not available.'
+        })
     
     # Get account balance and MSTU price
     account_balance = client.get_account_balance()
@@ -80,6 +108,15 @@ def get_data():
 def buy_mstu():
     """API endpoint to buy MSTU stock."""
     logger.info("API request to buy MSTU")
+    
+    # Check if we're in demo mode
+    if not client.authenticated:
+        logger.warning("Buy attempt in demo mode - returning simulated response")
+        return jsonify({
+            'success': False,
+            'message': 'Cannot place orders in demo mode. API authentication is required.',
+            'demo_mode': True
+        })
     
     try:
         # Get form data
