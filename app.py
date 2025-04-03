@@ -1,85 +1,43 @@
-# /app.py
+# /config.py
 import os
-import threading
-import signal
-import sys
-from flask import Flask, jsonify
+from dotenv import load_dotenv
 
-import config
-from logger import get_logger
-from dashboard import dashboard
-from tastytrade_client import client
+# Load environment variables from .env file (for local development)
+load_dotenv()
 
-# Initialize logger
-logger = get_logger(__name__)
+# Tastytrade API configuration
+TASTYTRADE_LOGIN = os.environ.get('TASTYTRADE_LOGIN')
+TASTYTRADE_PASSWORD = os.environ.get('TASTYTRADE_PASSWORD')
+API_BASE_URL = os.environ.get('API_BASE_URL', 'api.tastytrade.com')
+ACCOUNT_NUMBER = os.environ.get('ACCOUNT_NUMBER')
 
-# Lock for client initialization
-client_init_lock = threading.Lock()
-client_initialized = False
+# Flask configuration
+FLASK_SECRET_KEY = os.environ.get('FLASK_SECRET_KEY', os.urandom(24).hex())
+DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 't')
 
-def signal_handler(sig, frame):
-    """Handle shutdown signals gracefully."""
-    logger.info(f"Received signal {sig}, shutting down...")
-    # Perform any cleanup needed
-    if hasattr(client, 'authenticated') and client.authenticated:
-        try:
-            client.tasty.logout()
-            logger.info("Successfully logged out of Tastytrade API")
-        except Exception as e:
-            logger.error(f"Error during logout: {str(e)}")
-    sys.exit(0)
+# Server configuration
+PORT = int(os.environ.get('PORT', 8080))  # Change default from 8000 to 8080
 
-# Register signal handlers
-signal.signal(signal.SIGINT, signal_handler)
-signal.signal(signal.SIGTERM, signal_handler)
+# Logging configuration
+LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
 
-def create_app():
-    """Create and configure the Flask application."""
-    app = Flask(__name__, 
-                static_folder='static',
-                template_folder='templates')
+# Validate required configuration
+def validate_config():
+    missing_vars = []
     
-    # Configure the app
-    app.secret_key = config.FLASK_SECRET_KEY
-    app.config['DEBUG'] = config.DEBUG
+    if not TASTYTRADE_LOGIN:
+        missing_vars.append('TASTYTRADE_LOGIN')
+    if not TASTYTRADE_PASSWORD:
+        missing_vars.append('TASTYTRADE_PASSWORD')
+    if not ACCOUNT_NUMBER:
+        missing_vars.append('ACCOUNT_NUMBER')
     
-    # Register blueprints
-    app.register_blueprint(dashboard)
-    
-    # Register error handlers
-    @app.errorhandler(404)
-    def page_not_found(e):
-        logger.warning(f"404 error: {str(e)}")
-        return jsonify({"error": "Not Found", "message": "The requested resource was not found"}), 404
-    
-    @app.errorhandler(500)
-    def server_error(e):
-        logger.error(f"500 error: {str(e)}")
-        return jsonify({"error": "Server Error", "message": "An internal server error occurred"}), 500
-    
-    # Before request handler to ensure client is initialized
-    @app.before_request
-    def ensure_client():
-        global client_initialized
-        if not client_initialized:
-            with client_init_lock:
-                if not client_initialized:
-                    logger.info("Initializing Tastytrade client")
-                    try:
-                        client.authenticate()
-                    except Exception as e:
-                        logger.error(f"Authentication failed: {str(e)} - continuing anyway")
-                    
-                    # Mark as initialized even if authentication failed
-                    # This prevents repeated authentication attempts
-                    client_initialized = True
-    
-    return app
+    if missing_vars:
+        raise EnvironmentError(f"Missing required environment variables: {', '.join(missing_vars)}")
 
-# Create the app
-app = create_app()
-
-if __name__ == '__main__':
-    # Run the app
-    port = int(os.environ.get('PORT', 8080))  # Default to 8080 instead of 8000
-    app.run(host='0.0.0.0', port=port)
+# Call validation (will raise exception if config is invalid)
+try:
+    validate_config()
+except EnvironmentError as e:
+    # Log the error instead of crashing
+    print(f"Configuration warning: {str(e)}")
