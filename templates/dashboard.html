@@ -1,4 +1,5 @@
-<!-- /templates/dashboard.html -->
+# /templates/dashboard.html
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -138,3 +139,216 @@
             const orderTypeSelect = document.getElementById('order-type');
             const priceGroup = document.getElementById('price-group');
             const buyForm = document.getElementById('buy-form');
+
+            // Add event listeners
+            refreshButton.addEventListener('click', fetchData);
+            orderTypeSelect.addEventListener('change', togglePriceField);
+            buyForm.addEventListener('submit', handleBuyFormSubmit);
+
+            // Toggle price field based on order type
+            function togglePriceField() {
+                if (orderTypeSelect.value === 'Limit') {
+                    priceGroup.style.display = 'flex';
+                    document.getElementById('price').required = true;
+                } else {
+                    priceGroup.style.display = 'none';
+                    document.getElementById('price').required = false;
+                }
+            }
+
+            // Fetch data from API
+            function fetchData() {
+                showLoadingState();
+                
+                fetch('/api/data')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        updateDashboard(data);
+                        hideLoadingState();
+                    })
+                    .catch(error => {
+                        console.error('Error fetching data:', error);
+                        showError(error.message);
+                        hideLoadingState();
+                    });
+            }
+
+            // Update dashboard with fetched data
+            function updateDashboard(data) {
+                // Update MSTU data
+                if (data.mstu) {
+                    document.getElementById('mstu-symbol').textContent = data.mstu.symbol;
+                    document.getElementById('mstu-description').textContent = data.mstu.description;
+                    document.getElementById('mstu-last-price').textContent = data.mstu.last_price;
+                    document.getElementById('mstu-bid-price').textContent = data.mstu.bid_price;
+                    document.getElementById('mstu-ask-price').textContent = data.mstu.ask_price;
+                    
+                    const changeElement = document.getElementById('mstu-change');
+                    changeElement.textContent = data.mstu.change;
+                    if (parseFloat(data.mstu.raw_last_price) > 0) {
+                        changeElement.className = parseFloat(data.mstu.change) >= 0 ? 'positive' : 'negative';
+                    }
+                    
+                    const percentChangeElement = document.getElementById('mstu-percent-change');
+                    percentChangeElement.textContent = data.mstu.percent_change;
+                    if (parseFloat(data.mstu.raw_last_price) > 0) {
+                        percentChangeElement.className = parseFloat(data.mstu.percent_change) >= 0 ? 'positive' : 'negative';
+                    }
+                    
+                    document.getElementById('mstu-timestamp').textContent = data.mstu.formatted_timestamp;
+                    
+                    document.getElementById('mstu-data').classList.remove('hidden');
+                    document.getElementById('mstu-error').classList.add('hidden');
+                } else {
+                    document.getElementById('mstu-error').textContent = 'Could not retrieve MSTU data';
+                    document.getElementById('mstu-error').classList.remove('hidden');
+                    document.getElementById('mstu-data').classList.add('hidden');
+                }
+                
+                // Update account data
+                if (data.account) {
+                    document.getElementById('cash-balance').textContent = data.account.cash_balance;
+                    document.getElementById('total-equity').textContent = data.account.total_equity;
+                    document.getElementById('buying-power').textContent = data.account.buying_power;
+                    document.getElementById('account-timestamp').textContent = data.account.formatted_timestamp;
+                    
+                    document.getElementById('account-data').classList.remove('hidden');
+                    document.getElementById('account-error').classList.add('hidden');
+                } else {
+                    document.getElementById('account-error').textContent = 'Could not retrieve account data';
+                    document.getElementById('account-error').classList.remove('hidden');
+                    document.getElementById('account-data').classList.add('hidden');
+                }
+                
+                // Update API calls history
+                if (data.api_calls && data.api_calls.length > 0) {
+                    const tbody = document.getElementById('api-calls-tbody');
+                    tbody.innerHTML = '';
+                    
+                    data.api_calls.forEach(call => {
+                        const row = document.createElement('tr');
+                        
+                        const timestampCell = document.createElement('td');
+                        timestampCell.textContent = call.timestamp;
+                        row.appendChild(timestampCell);
+                        
+                        const endpointCell = document.createElement('td');
+                        endpointCell.textContent = call.endpoint;
+                        row.appendChild(endpointCell);
+                        
+                        const statusCell = document.createElement('td');
+                        statusCell.textContent = call.status;
+                        if (call.status.includes('SUCCESS')) {
+                            statusCell.className = 'success';
+                        } else if (call.status.includes('FAILED')) {
+                            statusCell.className = 'failed';
+                        }
+                        row.appendChild(statusCell);
+                        
+                        tbody.appendChild(row);
+                    });
+                    
+                    document.getElementById('api-calls-data').classList.remove('hidden');
+                } else {
+                    document.getElementById('api-calls-tbody').innerHTML = '<tr><td colspan="3">No API calls recorded yet</td></tr>';
+                    document.getElementById('api-calls-data').classList.remove('hidden');
+                }
+            }
+
+            // Handle buy form submission
+            function handleBuyFormSubmit(event) {
+                event.preventDefault();
+                
+                const quantity = document.getElementById('quantity').value;
+                const orderType = document.getElementById('order-type').value;
+                const price = document.getElementById('price').value;
+                
+                // Clear previous messages
+                document.getElementById('buy-error').classList.add('hidden');
+                document.getElementById('buy-success').classList.add('hidden');
+                
+                // Validate inputs
+                if (!quantity || quantity <= 0) {
+                    showBuyError('Please enter a valid quantity');
+                    return;
+                }
+                
+                if (orderType === 'Limit' && (!price || price <= 0)) {
+                    showBuyError('Please enter a valid price for limit order');
+                    return;
+                }
+                
+                // Create form data
+                const formData = new FormData();
+                formData.append('quantity', quantity);
+                formData.append('order_type', orderType);
+                if (orderType === 'Limit') {
+                    formData.append('price', price);
+                }
+                
+                // Submit buy order
+                fetch('/api/buy-mstu', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        showBuySuccess(result.message);
+                        // Refresh data to show updated account balance
+                        setTimeout(fetchData, 1000);
+                    } else {
+                        showBuyError(result.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error submitting buy order:', error);
+                    showBuyError('An error occurred while submitting your order');
+                });
+            }
+
+            // Helper functions
+            function showLoadingState() {
+                document.getElementById('mstu-loading').style.display = 'block';
+                document.getElementById('account-loading').style.display = 'block';
+                document.getElementById('api-calls-loading').style.display = 'block';
+            }
+
+            function hideLoadingState() {
+                document.getElementById('mstu-loading').style.display = 'none';
+                document.getElementById('account-loading').style.display = 'none';
+                document.getElementById('api-calls-loading').style.display = 'none';
+            }
+
+            function showError(message) {
+                document.getElementById('mstu-error').textContent = message;
+                document.getElementById('mstu-error').classList.remove('hidden');
+                document.getElementById('account-error').textContent = message;
+                document.getElementById('account-error').classList.remove('hidden');
+            }
+
+            function showBuyError(message) {
+                const errorElement = document.getElementById('buy-error');
+                errorElement.textContent = message;
+                errorElement.classList.remove('hidden');
+            }
+
+            function showBuySuccess(message) {
+                const successElement = document.getElementById('buy-success');
+                successElement.textContent = message;
+                successElement.classList.remove('hidden');
+            }
+
+            // Auto-refresh data every 30 seconds
+            fetchData(); // Initial data load
+            setInterval(fetchData, 30000);
+        });
+    </script>
+</body>
+</html>
+```
