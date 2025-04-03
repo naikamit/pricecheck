@@ -18,7 +18,6 @@ def index():
     # Return the dashboard template
     return render_template('dashboard.html')
 
-# Update to get_data() function in dashboard.py
 @dashboard.route('/api/data')
 def get_data():
     """API endpoint to get the latest data for the dashboard."""
@@ -109,6 +108,13 @@ def get_data():
 def buy_mstu():
     """API endpoint to buy MSTU stock."""
     logger.info("API request to buy MSTU")
+    
+    # Check if the client is authenticated
+    if not client.authenticated:
+        return jsonify({
+            'success': False,
+            'message': 'Cannot place orders in demo mode. Authentication required.'
+        })
     
     try:
         # Get form data
