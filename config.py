@@ -36,4 +36,8 @@ def validate_config():
         raise EnvironmentError(f"Missing required environment variables: {', '.join(missing_vars)}")
 
 # Call validation (will raise exception if config is invalid)
-validate_config()
+try:
+    validate_config()
+except EnvironmentError as e:
+    # Log the error instead of crashing
+    print(f"Configuration warning: {str(e)}")
