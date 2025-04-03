@@ -70,6 +70,8 @@ def create_app():
                     except Exception as e:
                         logger.error(f"Authentication failed: {str(e)} - continuing anyway")
                     
+                    # Mark as initialized even if authentication failed
+                    # This prevents repeated authentication attempts
                     client_initialized = True
     
     return app
@@ -79,5 +81,5 @@ app = create_app()
 
 if __name__ == '__main__':
     # Run the app
-    port = int(os.environ.get('PORT', 8000))
+    port = int(os.environ.get('PORT', 8080))  # Default to 8080 instead of 8000
     app.run(host='0.0.0.0', port=port)
