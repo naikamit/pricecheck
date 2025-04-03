@@ -1,5 +1,4 @@
-# /templates/dashboard.html
-```html
+<!-- /templates/dashboard.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -258,6 +257,11 @@
                     document.getElementById('api-calls-tbody').innerHTML = '<tr><td colspan="3">No API calls recorded yet</td></tr>';
                     document.getElementById('api-calls-data').classList.remove('hidden');
                 }
+                
+                // Check if we're in demo mode and show appropriate message
+                if (data.message) {
+                    showError(data.message);
+                }
             }
 
             // Handle buy form submission
@@ -351,4 +355,3 @@
     </script>
 </body>
 </html>
-```
