@@ -66,12 +66,14 @@ def create_app():
                 if not client_initialized:
                     logger.info("Initializing Tastytrade client")
                     try:
-                        client.authenticate()
+                        # Try to authenticate but don't raise exceptions
+                        success = client.authenticate()
+                        if not success:
+                            logger.warning("Authentication failed, but continuing in limited mode")
                     except Exception as e:
-                        logger.error(f"Authentication failed: {str(e)} - continuing anyway")
+                        logger.error(f"Authentication error: {str(e)} - continuing in limited mode")
                     
-                    # Mark as initialized even if authentication failed
-                    # This prevents repeated authentication attempts
+                    # Always mark as initialized to prevent repeated attempts
                     client_initialized = True
     
     return app
