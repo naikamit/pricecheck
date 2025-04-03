@@ -1,357 +1,180 @@
-<!-- /templates/dashboard.html -->
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tastytrade Dashboard</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-</head>
-<body>
-    <header>
-        <div class="container">
-            <h1>Tastytrade Dashboard</h1>
-        </div>
-    </header>
+/* /static/css/style.css */
+:root {
+  --bg-color: #121212;
+  --bg-secondary: #1e1e1e;
+  --text-color: #e0e0e0;
+  --primary-color: #bb86fc;
+  --secondary-color: #03dac6;
+  --error-color: #cf6679;
+  --success-color: #4caf50;
+  --warning-color: #ff9800;
+  --info-color: #2196f3;
+}
 
-    <div class="container">
-        <button id="refresh-button" class="refresh-button">Refresh Data</button>
-        
-        <div class="dashboard-section">
-            <div class="card">
-                <h2>MSTU Stock</h2>
-                <div id="mstu-loading">Loading MSTU data...</div>
-                <div id="mstu-error" class="error-message hidden"></div>
-                <div id="mstu-data" class="hidden">
-                    <div class="data-row">
-                        <span class="data-label">Symbol:</span>
-                        <span id="mstu-symbol">MSTU</span>
-                    </div>
-                    <div class="data-row">
-                        <span class="data-label">Description:</span>
-                        <span id="mstu-description">Microstrategy Inc</span>
-                    </div>
-                    <div class="data-row">
-                        <span class="data-label">Last Price:</span>
-                        <span id="mstu-last-price">$0.00</span>
-                    </div>
-                    <div class="data-row">
-                        <span class="data-label">Bid Price:</span>
-                        <span id="mstu-bid-price">$0.00</span>
-                    </div>
-                    <div class="data-row">
-                        <span class="data-label">Ask Price:</span>
-                        <span id="mstu-ask-price">$0.00</span>
-                    </div>
-                    <div class="data-row">
-                        <span class="data-label">Change:</span>
-                        <span id="mstu-change">$0.00</span>
-                    </div>
-                    <div class="data-row">
-                        <span class="data-label">% Change:</span>
-                        <span id="mstu-percent-change">0.00%</span>
-                    </div>
-                    <div class="timestamp">
-                        Last updated: <span id="mstu-timestamp">Unknown</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+body {
+  font-family: 'Roboto', 'Helvetica Neue', sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  line-height: 1.6;
+}
 
-        <div class="dashboard-section">
-            <div class="card">
-                <h2>Account Balance</h2>
-                <div id="account-loading">Loading account data...</div>
-                <div id="account-error" class="error-message hidden"></div>
-                <div id="account-data" class="hidden">
-                    <div class="data-row">
-                        <span class="data-label">Cash Balance:</span>
-                        <span id="cash-balance">$0.00</span>
-                    </div>
-                    <div class="data-row">
-                        <span class="data-label">Total Equity:</span>
-                        <span id="total-equity">$0.00</span>
-                    </div>
-                    <div class="data-row">
-                        <span class="data-label">Buying Power:</span>
-                        <span id="buying-power">$0.00</span>
-                    </div>
-                    <div class="timestamp">
-                        Last updated: <span id="account-timestamp">Unknown</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
 
-        <div class="dashboard-section">
-            <div class="card">
-                <h2>Buy MSTU</h2>
-                <form id="buy-form" class="buy-form">
-                    <div class="form-group">
-                        <label for="quantity">Quantity:</label>
-                        <input type="number" id="quantity" name="quantity" min="1" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="order-type">Order Type:</label>
-                        <select id="order-type" name="order_type">
-                            <option value="Market">Market</option>
-                            <option value="Limit">Limit</option>
-                        </select>
-                    </div>
-                    <div class="form-group" id="price-group" style="display: none;">
-                        <label for="price">Limit Price:</label>
-                        <input type="number" id="price" name="price" step="0.01" min="0.01">
-                    </div>
-                    <div id="buy-error" class="error-message hidden"></div>
-                    <div id="buy-success" class="success-message hidden"></div>
-                    <button type="submit">Buy MSTU</button>
-                </form>
-            </div>
-        </div>
+header {
+  background-color: var(--bg-secondary);
+  padding: 1rem;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
 
-        <div class="dashboard-section">
-            <div class="card">
-                <h2>API Calls History</h2>
-                <div id="api-calls-loading">Loading API call history...</div>
-                <div id="api-calls-data" class="hidden">
-                    <table class="api-calls-table">
-                        <thead>
-                            <tr>
-                                <th>Timestamp</th>
-                                <th>Endpoint</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="api-calls-tbody">
-                            <!-- API calls will be inserted here -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
+h1, h2, h3, h4, h5, h6 {
+  color: var(--primary-color);
+  margin-top: 0;
+}
 
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Get DOM elements
-            const refreshButton = document.getElementById('refresh-button');
-            const orderTypeSelect = document.getElementById('order-type');
-            const priceGroup = document.getElementById('price-group');
-            const buyForm = document.getElementById('buy-form');
+.card {
+  background-color: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
 
-            // Add event listeners
-            refreshButton.addEventListener('click', fetchData);
-            orderTypeSelect.addEventListener('change', togglePriceField);
-            buyForm.addEventListener('submit', handleBuyFormSubmit);
+.dashboard-section {
+  margin-bottom: 30px;
+}
 
-            // Toggle price field based on order type
-            function togglePriceField() {
-                if (orderTypeSelect.value === 'Limit') {
-                    priceGroup.style.display = 'flex';
-                    document.getElementById('price').required = true;
-                } else {
-                    priceGroup.style.display = 'none';
-                    document.getElementById('price').required = false;
-                }
-            }
+.data-row {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 10px 0;
+}
 
-            // Fetch data from API
-            function fetchData() {
-                showLoadingState();
-                
-                fetch('/api/data')
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('Network response was not ok');
-                        }
-                        return response.json();
-                    })
-                    .then(data => {
-                        updateDashboard(data);
-                        hideLoadingState();
-                    })
-                    .catch(error => {
-                        console.error('Error fetching data:', error);
-                        showError(error.message);
-                        hideLoadingState();
-                    });
-            }
+.data-label {
+  font-weight: bold;
+}
 
-            // Update dashboard with fetched data
-            function updateDashboard(data) {
-                // Update MSTU data
-                if (data.mstu) {
-                    document.getElementById('mstu-symbol').textContent = data.mstu.symbol;
-                    document.getElementById('mstu-description').textContent = data.mstu.description;
-                    document.getElementById('mstu-last-price').textContent = data.mstu.last_price;
-                    document.getElementById('mstu-bid-price').textContent = data.mstu.bid_price;
-                    document.getElementById('mstu-ask-price').textContent = data.mstu.ask_price;
-                    
-                    const changeElement = document.getElementById('mstu-change');
-                    changeElement.textContent = data.mstu.change;
-                    if (parseFloat(data.mstu.raw_last_price) > 0) {
-                        changeElement.className = parseFloat(data.mstu.change) >= 0 ? 'positive' : 'negative';
-                    }
-                    
-                    const percentChangeElement = document.getElementById('mstu-percent-change');
-                    percentChangeElement.textContent = data.mstu.percent_change;
-                    if (parseFloat(data.mstu.raw_last_price) > 0) {
-                        percentChangeElement.className = parseFloat(data.mstu.percent_change) >= 0 ? 'positive' : 'negative';
-                    }
-                    
-                    document.getElementById('mstu-timestamp').textContent = data.mstu.formatted_timestamp;
-                    
-                    document.getElementById('mstu-data').classList.remove('hidden');
-                    document.getElementById('mstu-error').classList.add('hidden');
-                } else {
-                    document.getElementById('mstu-error').textContent = 'Could not retrieve MSTU data';
-                    document.getElementById('mstu-error').classList.remove('hidden');
-                    document.getElementById('mstu-data').classList.add('hidden');
-                }
-                
-                // Update account data
-                if (data.account) {
-                    document.getElementById('cash-balance').textContent = data.account.cash_balance;
-                    document.getElementById('total-equity').textContent = data.account.total_equity;
-                    document.getElementById('buying-power').textContent = data.account.buying_power;
-                    document.getElementById('account-timestamp').textContent = data.account.formatted_timestamp;
-                    
-                    document.getElementById('account-data').classList.remove('hidden');
-                    document.getElementById('account-error').classList.add('hidden');
-                } else {
-                    document.getElementById('account-error').textContent = 'Could not retrieve account data';
-                    document.getElementById('account-error').classList.remove('hidden');
-                    document.getElementById('account-data').classList.add('hidden');
-                }
-                
-                // Update API calls history
-                if (data.api_calls && data.api_calls.length > 0) {
-                    const tbody = document.getElementById('api-calls-tbody');
-                    tbody.innerHTML = '';
-                    
-                    data.api_calls.forEach(call => {
-                        const row = document.createElement('tr');
-                        
-                        const timestampCell = document.createElement('td');
-                        timestampCell.textContent = call.timestamp;
-                        row.appendChild(timestampCell);
-                        
-                        const endpointCell = document.createElement('td');
-                        endpointCell.textContent = call.endpoint;
-                        row.appendChild(endpointCell);
-                        
-                        const statusCell = document.createElement('td');
-                        statusCell.textContent = call.status;
-                        if (call.status.includes('SUCCESS')) {
-                            statusCell.className = 'success';
-                        } else if (call.status.includes('FAILED')) {
-                            statusCell.className = 'failed';
-                        }
-                        row.appendChild(statusCell);
-                        
-                        tbody.appendChild(row);
-                    });
-                    
-                    document.getElementById('api-calls-data').classList.remove('hidden');
-                } else {
-                    document.getElementById('api-calls-tbody').innerHTML = '<tr><td colspan="3">No API calls recorded yet</td></tr>';
-                    document.getElementById('api-calls-data').classList.remove('hidden');
-                }
-                
-                // Check if we're in demo mode and show appropriate message
-                if (data.message) {
-                    showError(data.message);
-                }
-            }
+.positive {
+  color: var(--success-color);
+}
 
-            // Handle buy form submission
-            function handleBuyFormSubmit(event) {
-                event.preventDefault();
-                
-                const quantity = document.getElementById('quantity').value;
-                const orderType = document.getElementById('order-type').value;
-                const price = document.getElementById('price').value;
-                
-                // Clear previous messages
-                document.getElementById('buy-error').classList.add('hidden');
-                document.getElementById('buy-success').classList.add('hidden');
-                
-                // Validate inputs
-                if (!quantity || quantity <= 0) {
-                    showBuyError('Please enter a valid quantity');
-                    return;
-                }
-                
-                if (orderType === 'Limit' && (!price || price <= 0)) {
-                    showBuyError('Please enter a valid price for limit order');
-                    return;
-                }
-                
-                // Create form data
-                const formData = new FormData();
-                formData.append('quantity', quantity);
-                formData.append('order_type', orderType);
-                if (orderType === 'Limit') {
-                    formData.append('price', price);
-                }
-                
-                // Submit buy order
-                fetch('/api/buy-mstu', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(result => {
-                    if (result.success) {
-                        showBuySuccess(result.message);
-                        // Refresh data to show updated account balance
-                        setTimeout(fetchData, 1000);
-                    } else {
-                        showBuyError(result.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error submitting buy order:', error);
-                    showBuyError('An error occurred while submitting your order');
-                });
-            }
+.negative {
+  color: var(--error-color);
+}
 
-            // Helper functions
-            function showLoadingState() {
-                document.getElementById('mstu-loading').style.display = 'block';
-                document.getElementById('account-loading').style.display = 'block';
-                document.getElementById('api-calls-loading').style.display = 'block';
-            }
+.api-calls-table {
+  width: 100%;
+  border-collapse: collapse;
+}
 
-            function hideLoadingState() {
-                document.getElementById('mstu-loading').style.display = 'none';
-                document.getElementById('account-loading').style.display = 'none';
-                document.getElementById('api-calls-loading').style.display = 'none';
-            }
+.api-calls-table th,
+.api-calls-table td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
 
-            function showError(message) {
-                document.getElementById('mstu-error').textContent = message;
-                document.getElementById('mstu-error').classList.remove('hidden');
-                document.getElementById('account-error').textContent = message;
-                document.getElementById('account-error').classList.remove('hidden');
-            }
+.api-calls-table th {
+  color: var(--primary-color);
+  font-weight: bold;
+}
 
-            function showBuyError(message) {
-                const errorElement = document.getElementById('buy-error');
-                errorElement.textContent = message;
-                errorElement.classList.remove('hidden');
-            }
+.api-calls-table .success {
+  color: var(--success-color);
+}
 
-            function showBuySuccess(message) {
-                const successElement = document.getElementById('buy-success');
-                successElement.textContent = message;
-                successElement.classList.remove('hidden');
-            }
+.api-calls-table .failed {
+  color: var(--error-color);
+}
 
-            // Auto-refresh data every 30 seconds
-            fetchData(); // Initial data load
-            setInterval(fetchData, 30000);
-        });
-    </script>
-</body>
-</html>
+.buy-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 400px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+input, select, button {
+  padding: 10px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background-color: var(--bg-color);
+  color: var(--text-color);
+}
+
+button {
+  cursor: pointer;
+  background-color: var(--primary-color);
+  color: var(--bg-color);
+  border: none;
+  font-weight: bold;
+  transition: background-color 0.3s;
+}
+
+button:hover {
+  background-color: #9965f4;
+}
+
+.hidden {
+  display: none;
+}
+
+.timestamp {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.refresh-button {
+  background-color: var(--secondary-color);
+  color: var(--bg-color);
+  padding: 8px 16px;
+  margin-bottom: 16px;
+}
+
+.error-message {
+  color: var(--error-color);
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.success-message {
+  color: var(--success-color);
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+/* Responsiveness */
+@media (max-width: 768px) {
+  .container {
+    padding: 10px;
+  }
+  
+  .card {
+    padding: 15px;
+  }
+  
+  .data-row {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .api-calls-table th:nth-child(3),
+  .api-calls-table td:nth-child(3) {
+    display: none;
+  }
+}
