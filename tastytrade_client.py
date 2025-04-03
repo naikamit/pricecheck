@@ -22,9 +22,15 @@ class TastetradeClient:
         self.api_calls = []  # Track recent API calls
         self.MAX_API_CALLS_HISTORY = 50  # Maximum number of API calls to store in history
         
-# Update to authenticate() method in TastetradeClient class
     def authenticate(self):
         """Authenticate with the Tastytrade API."""
+        # Check if in development mode
+        if config.DEV_MODE:
+            logger.info("Running in DEV_MODE - skipping actual authentication")
+            self._track_api_call("Authentication", "BYPASSED (Dev Mode)")
+            self.authenticated = False  # Still set to false so we return demo data
+            return False
+            
         if not config.TASTYTRADE_LOGIN or not config.TASTYTRADE_PASSWORD:
             error_msg = "Missing Tastytrade credentials. Running in limited mode."
             self._track_api_call("Authentication", f"FAILED: {error_msg}")
@@ -33,20 +39,33 @@ class TastetradeClient:
             return False
             
         try:
-            logger.info(f"Authenticating with Tastytrade API using base URL: {config.API_BASE_URL}")
-            self.tasty = Tastytrade(api_base_url=config.API_BASE_URL)
-            self.tasty.login(config.TASTYTRADE_LOGIN, config.TASTYTRADE_PASSWORD)
-            self.authenticated = True
-            self.last_auth_time = datetime.now()
-            self._track_api_call("Authentication", "SUCCESS")
-            logger.info("Authentication successful")
-            return True
+            # Make sure there's no trailing slash that could cause URL issues
+            api_base_url = config.API_BASE_URL.rstrip('/')
+            logger.info(f"Authenticating with Tastytrade API using base URL: {api_base_url}")
+            
+            # Initialize the Tastytrade client with the clean URL
+            self.tasty = Tastytrade(api_base_url=api_base_url)
+            
+            # Attempt to login
+            try:
+                self.tasty.login(config.TASTYTRADE_LOGIN, config.TASTYTRADE_PASSWORD)
+                self.authenticated = True
+                self.last_auth_time = datetime.now()
+                self._track_api_call("Authentication", "SUCCESS")
+                logger.info("Authentication successful")
+                return True
+            except Exception as login_error:
+                error_msg = f"Login failed: {str(login_error)}"
+                self._track_api_call("Authentication", f"FAILED: {error_msg}")
+                logger.error(error_msg)
+                self.authenticated = False
+                return False
+                
         except Exception as e:
             self.authenticated = False
-            error_msg = f"Authentication failed: {str(e)}"
+            error_msg = f"Authentication setup failed: {str(e)}"
             self._track_api_call("Authentication", f"FAILED: {error_msg}")
             logger.error(error_msg)
-            # Don't re-raise the exception, allow the app to continue in a limited mode
             return False
     
     def ensure_authenticated(self):
